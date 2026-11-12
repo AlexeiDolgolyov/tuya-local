@@ -1,0 +1,245 @@
+# Built from the device's local dps and Tuya's QueryThingsDataModel.
+# Left out: dp 17/29 (Fahrenheit copies, not reported locally), 105
+# (programming bitfield), 116 (raw schedule), 117 (factory reset) and
+# 118 (query trigger).
+name: Thermostat
+products:
+  - id: nfg4ygfkrhrs3z57
+    manufacturer: SHTEIN
+    model: X1S S29
+entities:
+  - entity: climate
+    translation_key: thermostat
+    dps:
+      - id: 1
+        type: boolean
+        name: hvac_mode
+        mapping:
+          - dps_val: false
+            value: "off"
+          - dps_val: true
+            value: heat
+      - id: 101
+        type: string
+        name: preset_mode
+        mapping:
+          - dps_val: AUTO
+            value: program
+          - dps_val: HOLD
+            value: manual
+          - dps_val: HOLIDAY
+            value: away
+      # Always Celsius: the device keeps Fahrenheit in separate dps.
+      - id: 16
+        type: integer
+        name: temperature
+        unit: C
+        range:
+          min: 50
+          max: 400
+        mapping:
+          - scale: 10
+            step: 5
+      # Reads the sensor chosen by dp 106 (room, floor or both).
+      - id: 24
+        type: integer
+        name: current_temperature
+        mapping:
+          - scale: 10
+      # "0" = not heating, "1" = heating (relay closed).
+      - id: 115
+        type: string
+        name: hvac_action
+        mapping:
+          - dps_val: "1"
+            value: heating
+          - dps_val: "0"
+            constraint: hvac_mode
+            conditions:
+              - dps_val: false
+                value: "off"
+              - dps_val: true
+                value: idle
+  - entity: lock
+    translation_key: child_lock
+    category: config
+    dps:
+      - id: 103
+        type: boolean
+        optional: true
+        name: lock
+  - entity: binary_sensor
+    class: problem
+    category: diagnostic
+    dps:
+      # Sensor fault bitmap: bit 0 room sensor, bit 1 floor sensor.
+      - id: 102
+        type: bitfield
+        optional: true
+        name: sensor
+        mapping:
+          - dps_val: 0
+            value: false
+          - value: true
+      - id: 102
+        type: bitfield
+        optional: true
+        name: fault_code
+  - entity: switch
+    translation_key: anti_frost
+    category: config
+    dps:
+      - id: 111
+        type: boolean
+        optional: true
+        name: switch
+  - entity: select
+    name: Temperature sensor
+    icon: "mdi:thermometer-lines"
+    category: config
+    dps:
+      - id: 106
+        type: string
+        optional: true
+        name: option
+        mapping:
+          - dps_val: "0"
+            value: Room
+          - dps_val: "1"
+            value: Floor
+          - dps_val: "2"
+            value: Room and floor
+  - entity: number
+    name: Floor temperature limit
+    icon: "mdi:thermometer-high"
+    category: config
+    dps:
+      - id: 110
+        type: integer
+        optional: true
+        name: value
+        unit: C
+        range:
+          min: 200
+          max: 500
+        mapping:
+          - scale: 10
+            step: 10
+  - entity: number
+    name: Room temperature calibration
+    icon: "mdi:home-thermometer-outline"
+    category: config
+    dps:
+      - id: 107
+        type: integer
+        optional: true
+        name: value
+        unit: C
+        range:
+          min: -50
+          max: 50
+        mapping:
+          - scale: 10
+            step: 5
+  - entity: number
+    name: Floor temperature calibration
+    icon: "mdi:thermometer-lines"
+    category: config
+    dps:
+      - id: 108
+        type: integer
+        optional: true
+        name: value
+        unit: C
+        range:
+          min: -50
+          max: 50
+        mapping:
+          - scale: 10
+            step: 5
+  - entity: number
+    name: Holiday days
+    icon: "mdi:calendar-range"
+    category: config
+    dps:
+      - id: 104
+        type: integer
+        optional: true
+        name: value
+        unit: d
+        range:
+          min: 0
+          max: 99
+  # Rated power of the heating cable, used by the device for its own
+  # consumption figure.
+  - entity: number
+    name: Heater power
+    class: power
+    category: config
+    dps:
+      - id: 113
+        type: integer
+        optional: true
+        name: value
+        unit: W
+        range:
+          min: 0
+          max: 3600
+  # "heater_time" in the data model, shown as consumption in the app.
+  # Unit not confirmed yet, so it is exposed as a plain counter.
+  - entity: sensor
+    name: Heating time
+    icon: "mdi:timer-outline"
+    category: diagnostic
+    dps:
+      - id: 114
+        type: integer
+        optional: true
+        name: sensor
+        class: total_increasing
+  - entity: select
+    translation_key: temperature_unit
+    category: config
+    dps:
+      - id: 23
+        type: string
+        optional: true
+        name: option
+        mapping:
+          - dps_val: c
+            value: celsius
+          - dps_val: f
+            value: fahrenheit
+  # Installer settings, disabled by default.
+  - entity: select
+    name: Sensor type
+    icon: "mdi:thermometer-probe"
+    category: config
+    hidden: true
+    dps:
+      - id: 109
+        type: string
+        optional: true
+        name: option
+        mapping:
+          - dps_val: "0"
+            value: 10k NTC (0)
+          - dps_val: "1"
+            value: 10k NTC (1)
+          - dps_val: "2"
+            value: 12k NTC
+  - entity: select
+    name: Location
+    icon: "mdi:map-marker-outline"
+    category: config
+    hidden: true
+    dps:
+      - id: 112
+        type: string
+        optional: true
+        name: option
+        mapping:
+          - dps_val: "0"
+            value: Home
+          - dps_val: "1"
+            value: Office
